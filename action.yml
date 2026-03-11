@@ -1,0 +1,57 @@
+name: "OGQ Claude Code Reviewer"
+description: "Claude Code를 사용한 PR 자동 리뷰 Composite Action"
+author: "OGQ"
+
+inputs:
+  github_token:
+    description: "GitHub API 토큰"
+    required: true
+  claude_code_oauth_token:
+    description: "Claude Code OAuth 토큰"
+    required: true
+  prompt:
+    description: "Claude에게 전달할 리뷰 프롬프트"
+    required: false
+    default: |
+      REPO: ${{ github.repository }}
+      PR NUMBER: ${{ github.event.pull_request.number }}
+      이 PR을 리뷰하고 코멘트로 작성해주세요.
+  claude_args:
+    description: "Claude CLI 추가 인자"
+    required: false
+    default: |
+      --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
+  show_full_output:
+    description: "Claude 출력 전체 표시 여부"
+    required: false
+    default: "true"
+  delete_previous_reviews:
+    description: "synchronize 시 이전 리뷰 삭제 여부"
+    required: false
+    default: "true"
+  delete_delay_seconds:
+    description: "API 호출 간 딜레이 (rate limit 방지)"
+    required: false
+    default: "0.3"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Delete Previous Claude Reviews
+      if: inputs.delete_previous_reviews == 'true' && github.event.action == 'synchronize'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github_token }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        REPO: ${{ github.repository }}
+        DELETE_DELAY: ${{ inputs.delete_delay_seconds }}
+      run: ${{ github.action_path }}/scripts/delete-previous-reviews.sh
+
+    - name: Run Claude Code Review
+      uses: anthropics/claude-code-action@v1
+      with:
+        show_full_output: ${{ inputs.show_full_output }}
+        claude_code_oauth_token: ${{ inputs.claude_code_oauth_token }}
+        github_token: ${{ inputs.github_token }}
+        prompt: ${{ inputs.prompt }}
+        claude_args: ${{ inputs.claude_args }}
