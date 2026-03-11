@@ -8,16 +8,22 @@ Claude Code를 사용한 PR 자동 리뷰 Composite GitHub Action.
 name: "Claude Code Review"
 on:
   pull_request:
+    branches:
+      - main
     types: [opened, reopened, synchronize]
+
 jobs:
   review:
     runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     permissions:
       contents: read
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
-      - uses: ogq/ogq-code-reviewer@v1
+      - uses: ogq-bobby/ogq-code-reviewer@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -38,7 +44,7 @@ jobs:
 ## 커스터마이징 예시
 
 ```yaml
-- uses: ogq/ogq-code-reviewer@v1
+- uses: ogq-bobby/ogq-code-reviewer@v1
   with:
     github_token: ${{ secrets.GITHUB_TOKEN }}
     claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
